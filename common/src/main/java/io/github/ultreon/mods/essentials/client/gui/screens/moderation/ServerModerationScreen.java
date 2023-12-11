@@ -25,7 +25,7 @@ public class ServerModerationScreen extends UEssentialsMenuScreen {
         }
 
         if (LocalUser.get().hasPermission(Permissions.WEATHER_SET)) {
-            addButtonRow(Component.literal("Create a New Warp"), btn -> new WeatherSetScreen().open());
+            addButtonRow(Component.literal("Set weather mode"), btn -> new WeatherSetScreen().open());
         }
     }
 }
