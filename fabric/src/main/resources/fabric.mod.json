@@ -6,7 +6,11 @@
   "name": "Ultimate Server Essentials",
   "description": "The ultimate server essentials mod, that uses GUI and keybinds instead of commands.",
   "authors": [],
-  "contact": {},
+  "contact": {
+    "sources": "https://github.com/Ultreon/ultimate-essentials",
+    "issues": "https://github.com/Ultreon/ultimate-essentials/issues",
+    "homepage": "https://ultreon.github.io/?id=ultimate-essentials#project"
+  },
 
   "license": "All Rights Reserved",
   "icon": "assets/ultimate_essentials/icon.png",
