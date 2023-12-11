@@ -1,0 +1,6 @@
+accessWidener v1 named
+accessible field net/minecraft/client/gui/screens/LoadingOverlay LOGO_BACKGROUND_COLOR I
+mutable field net/minecraft/client/gui/screens/LoadingOverlay LOGO_BACKGROUND_COLOR I
+accessible field net/minecraft/server/network/ServerGamePacketListenerImpl connection Lnet/minecraft/network/Connection;
+accessible method net/minecraft/world/entity/Entity setLevel (Lnet/minecraft/world/level/Level;)V
+accessible field net/minecraft/client/gui/screens/TitleScreen PANORAMA_OVERLAY Lnet/minecraft/resources/ResourceLocation;

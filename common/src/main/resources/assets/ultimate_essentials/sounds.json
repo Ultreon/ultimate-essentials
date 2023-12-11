@@ -1,0 +1,16 @@
+{
+  "shop.buy": {
+    "category": "",
+    "subtitle": "vertinox.subtitle.economy.shop.buy",
+    "sounds": [
+      "ultimate_essentials:shop/buy"
+    ]
+  },
+  "shop.error": {
+    "category": "",
+    "subtitle": "vertinox.subtitle.economy.shop.error",
+    "sounds": [
+      "ultimate_essentials:shop/error"
+    ]
+  }
+}
