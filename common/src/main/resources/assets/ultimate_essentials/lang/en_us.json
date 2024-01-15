@@ -125,5 +125,8 @@
   "loader.ultimate_essentials.connect": "Connect",
   "toast.ultimate_essentials.error": "Error",
   "message.ultimate_essentials.invalidInvite": "Invalid invite! Try again with the correct code.\nRetries: %s",
-  "message.ultimate_essentials.exchangedExp": "You exchanged your exp for %s%s."
+  "message.ultimate_essentials.exchangedExp": "You exchanged your exp for %s%s.",
+  "message.ultimate_essentials.tpRequest.overflown": "You can't teleport to multiple destinations.",
+  "message.ultimate_essentials.tpRequest.accepted": "Your request has been accepted!",
+  "message.ultimate_essentials.tpRequest.accepted.info": "You will be teleported to %s in %s seconds."
 }

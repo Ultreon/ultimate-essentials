@@ -17,6 +17,7 @@ public class ServerEvents {
     private static final HashMap<UUID, Integer> playerTicks = new HashMap<>();
 
     public static void onPlayerTick(Player player) {
+        if (player.level().isClientSide) return;
         ServerUser.get(player.getUUID()).tick(player);
 
 //        UUID uuid = player.getUUID();

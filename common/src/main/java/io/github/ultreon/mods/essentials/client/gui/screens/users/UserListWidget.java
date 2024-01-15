@@ -1,10 +1,23 @@
+/*
+ * Copyright (c) 2022. - Qboi SMP Development Team
+ * Do NOT redistribute, or copy in any way, and do NOT modify in any way.
+ * It is not allowed to hack into the code, use cheats against the code and/or compiled form.
+ * And it is not allowed to decompile, modify or/and patch parts of code or classes or in full form.
+ * Sharing this file isn't allowed either, and is hereby strictly forbidden.
+ * Sharing decompiled code on social media or an online platform will cause in a report on that account.
+ *
+ * ONLY the owner can bypass these rules.
+ */
+
 package io.github.ultreon.mods.essentials.client.gui.screens.users;
 
 import com.google.common.collect.ImmutableList;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.ultreon.mods.lib.client.gui.widget.Button;
-import io.github.ultreon.mods.essentials.client.UEssentialsClient;
-import io.github.ultreon.mods.essentials.client.gui.screens.UEssentialsMenuScreen;
+import com.ultreon.mods.lib.UltreonLib;
+import com.ultreon.mods.lib.UltreonLibConfig;
+import com.ultreon.mods.lib.client.gui.Theme;
+import com.ultreon.mods.lib.client.gui.Themed;
+import com.ultreon.mods.lib.client.gui.screen.BaseScreen;
 import io.github.ultreon.mods.essentials.user.AbstractClientUser;
 import lombok.Getter;
 import net.fabricmc.api.EnvType;
@@ -13,6 +26,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -34,9 +48,11 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @SuppressWarnings({"FieldCanBeLocal", "UnnecessaryLocalVariable"})
-public class UserListWidget extends AbstractWidget implements ContainerEventHandler {
-    public static final ResourceLocation GUI_LOCATION = UEssentialsClient.res("textures/gui/widgets/list.png");
-    public static final ResourceLocation LIST_ICONS = UEssentialsClient.res("textures/gui/list_icons.png");
+public class UserListWidget extends AbstractWidget implements ContainerEventHandler, Themed {
+    public static final ResourceLocation TEXTURE_DARK = UltreonLib.res("textures/gui/widgets/list/dark.png");
+    public static final ResourceLocation TEXTURE_NORMAL = UltreonLib.res("textures/gui/widgets/list/normal.png");
+    public static final ResourceLocation TEXTURE_LIGHT = UltreonLib.res("textures/gui/widgets/list/light.png");
+    public static final ResourceLocation LIST_ICONS = UltreonLib.res("textures/gui/list_icons.png");
 
     private static final int ICON_SIZE = 12;
     private static final int TEX_W = 64;
@@ -48,42 +64,55 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
     private final int headerHeight;
 
     private final List<GuiEventListener> children;
+    private ResourceLocation guiTexture;
     private EditBox searchBox;
-    private final ListWidget list;
+    private final WrappedList list;
     private final Font font;
     private GuiEventListener focused;
-    private Consumer<ListWidget.Entry> onClick;
-    private BiConsumer<ListWidget.Entry, Button> onClickButton;
+    private Consumer<WrappedList.Entry> onClick;
+    private BiConsumer<WrappedList.Entry, Button> onClickButton;
     @Getter
-    private final UEssentialsMenuScreen screen;
+    private final BaseScreen screen;
     private final Minecraft mc;
     @Getter
     private final int count;
     private final boolean hasSearch;
     private boolean isDragging;
+    private Theme theme;
 
-    public UserListWidget(UEssentialsMenuScreen screen, int x, int y, int width, int count, Component title, List<AbstractClientUser> users) {
-        this(screen, x, y, width, count, true, title, users);
+    public UserListWidget(BaseScreen screen, int x, int y, int width, int height, int count, Component title, List<AbstractClientUser> users) {
+        this(screen, x, y, width, height, count, true, title, users);
     }
 
-    public UserListWidget(UEssentialsMenuScreen screen, int x, int y, int width, int count, boolean hasSearch, Component title, List<AbstractClientUser> users) {
-        super(x, y, width, width, title);
+    public UserListWidget(BaseScreen screen, int x, int y, int width, int height, int count, boolean hasSearch, Component title, List<AbstractClientUser> users) {
+        this(screen, x, y, width, height, count, hasSearch, title, UltreonLibConfig.THEME.get(), users);
+    }
+
+    public UserListWidget(BaseScreen screen, int x, int y, int width, int height, int count, boolean hasSearch, Component title, Theme theme, @NotNull List<AbstractClientUser> users) {
+        super(x, y, width, 0, title);
         this.screen = screen;
         this.count = count;
         this.hasSearch = hasSearch;
         this.mc = Minecraft.getInstance();
         this.font = mc.font;
+        this.theme = theme;
+
+        switch (theme) {
+            case DARK -> guiTexture = TEXTURE_DARK;
+            case LIGHT, MIX -> guiTexture = TEXTURE_LIGHT;
+            default -> guiTexture = TEXTURE_NORMAL;
+        }
 
         this.headerHeight = hasSearch ? 18 : 0;
 
         if (hasSearch) {
             this.searchBox = new EditBox(this.font, x + LIST_BORDER_WIDTH + 28, y + LIST_BORDER_WIDTH + 78, width - 28 - LIST_BORDER_WIDTH * 2, 16, SEARCH_HINT) {
                 @Override
-                public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float frameTime) {
+                public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
                     this.setX(UserListWidget.this.getX() + LIST_BORDER_WIDTH + 4 + 12 + 4);
                     this.setY(UserListWidget.this.getY() + LIST_BORDER_WIDTH + 4 + 1);
 
-                    super.render(gfx, mouseX, mouseY, frameTime);
+                    super.renderWidget(gfx, mouseX, mouseY, partialTicks);
                 }
             };
             this.searchBox.setMaxLength(32);
@@ -94,9 +123,9 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             this.searchBox.setResponder(this::search);
         }
 
-        this.height = count * ENTRY_HEIGHT + headerHeight + LIST_BORDER_WIDTH * 2;
+        this.height = height;
 
-        this.list = new ListWidget(this, users, mc, screen.width, screen.height, y + LIST_BORDER_WIDTH, y + height - LIST_BORDER_WIDTH * 2 + headerHeight, ENTRY_HEIGHT) {
+        this.list = new WrappedList(this, users, mc, screen.width, screen.height, y + LIST_BORDER_WIDTH, y + height - LIST_BORDER_WIDTH * 2 + headerHeight, ENTRY_HEIGHT) {
             @Override
             public int getRowLeft() {
                 return UserListWidget.this.getX() + LIST_BORDER_WIDTH;
@@ -108,21 +137,18 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             }
 
             @Override
-            public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float frameTime) {
-//                this.width = screen.width;
-//                this.height = UserListWidget.this.height - LIST_BORDER_WIDTH * 2 + UserListWidget.this.headerHeight;
+            public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
                 this.y0 = UserListWidget.this.getY() + LIST_BORDER_WIDTH + UserListWidget.this.headerHeight;
                 this.y1 = UserListWidget.this.getY() + LIST_BORDER_WIDTH + UserListWidget.this.height - LIST_BORDER_WIDTH * 2;
 
-                super.render(gfx, mouseX, mouseY, frameTime);
+                super.render(gfx, mouseX, mouseY, partialTicks);
             }
         };
-        this.list.setFocused(true);
 
         if (hasSearch) {
-            this.children = ImmutableList.of(searchBox, list);
+            this.children = List.of(searchBox, list);
         } else {
-            this.children = ImmutableList.of(list);
+            this.children = List.of(list);
         }
     }
 
@@ -135,15 +161,15 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
     }
 
     @Override
-    public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float frameTime) {
-        RenderSystem.setShaderTexture(0, GUI_LOCATION);
+    public void renderWidget(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
+        RenderSystem.setShaderTexture(0, guiTexture);
         // List border
         final int lb = LIST_BORDER_WIDTH; // lb == List Border
-        
+
         // End pos
         final int x1 = getX() + width;
         final int y1 = getY() + height;
-        
+
         // Pos X
         final int sx = getX();
         final int mx = getX() + lb;
@@ -153,7 +179,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
         final int ty = getY();
         final int my = getY() + lb;
         final int by = y1 - lb;
-        
+
         // Inner size
         final int iw = width - lb * 2;
         final int ih = height - lb * 2;
@@ -168,25 +194,22 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
         final int eu = lb + lb;
 
         // Render
-        gfx.blit(GUI_LOCATION, sx, ty, lb, lb, su, tv, lb, lb, TEX_W, TEX_H); // Top left
-        gfx.blit(GUI_LOCATION, mx, ty, iw, lb, lb, tv, lb, lb, TEX_W, TEX_H); // Top
-        gfx.blit(GUI_LOCATION, ex, ty, lb, lb, eu, tv, lb, lb, TEX_W, TEX_H); // Top right
-        gfx.blit(GUI_LOCATION, sx, my, lb, ih, su, mv, lb, lb, TEX_W, TEX_H); // Middle left
-        gfx.blit(GUI_LOCATION, mx, my, iw, ih, lb, mv, lb, lb, TEX_W, TEX_H); // Middle
-        gfx.blit(GUI_LOCATION, ex, my, lb, ih, eu, mv, lb, lb, TEX_W, TEX_H); // Middle right
-        gfx.blit(GUI_LOCATION, sx, by, lb, lb, su, bv, lb, lb, TEX_W, TEX_H); // Bottom left
-        gfx.blit(GUI_LOCATION, mx, by, iw, lb, lb, bv, lb, lb, TEX_W, TEX_H); // Bottom
-        gfx.blit(GUI_LOCATION, ex, by, lb, lb, eu, bv, lb, lb, TEX_W, TEX_H); // Bottom right
+        gfx.blit(guiTexture, sx, ty, lb, lb, su, tv, lb, lb, TEX_W, TEX_H); // Top left
+        gfx.blit(guiTexture, mx, ty, iw, lb, lb, tv, lb, lb, TEX_W, TEX_H); // Top
+        gfx.blit(guiTexture, ex, ty, lb, lb, eu, tv, lb, lb, TEX_W, TEX_H); // Top right
+        gfx.blit(guiTexture, sx, my, lb, ih, su, mv, lb, lb, TEX_W, TEX_H); // Middle left
+        gfx.blit(guiTexture, mx, my, iw, ih, lb, mv, lb, lb, TEX_W, TEX_H); // Middle
+        gfx.blit(guiTexture, ex, my, lb, ih, eu, mv, lb, lb, TEX_W, TEX_H); // Middle right
+        gfx.blit(guiTexture, sx, by, lb, lb, su, bv, lb, lb, TEX_W, TEX_H); // Bottom left
+        gfx.blit(guiTexture, mx, by, iw, lb, lb, bv, lb, lb, TEX_W, TEX_H); // Bottom
+        gfx.blit(guiTexture, ex, by, lb, lb, eu, bv, lb, lb, TEX_W, TEX_H); // Bottom right
 
         // Search glass
-        gfx.blit(GUI_LOCATION, getX() + lb + 3, getY() + lb + 3, 12, 12, 51, 1, 12, 12, TEX_W, TEX_H);
-        
-        // Widget render.
-//        super.render(pose, mouseX, mouseY, frameTime);
+        gfx.blit(guiTexture, getX() + lb + 3, getY() + lb + 3, 12, 12, 51, 1, 12, 12, TEX_W, TEX_H);
 
-        this.list.render(gfx, mouseX, mouseY, frameTime);
+        this.list.render(gfx, mouseX, mouseY, partialTicks);
         if (searchBox != null) {
-            this.searchBox.render(gfx, mouseX, mouseY, frameTime);
+            this.searchBox.render(gfx, mouseX, mouseY, partialTicks);
         }
     }
 
@@ -196,35 +219,34 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             setFocused(list);
             return true;
         }
-        if (this.searchBox.isMouseOver(x, y) && this.searchBox.mouseClicked(x, y, button)) {
+        if (this.searchBox != null && this.searchBox.isMouseOver(x, y) && this.searchBox.mouseClicked(x, y, button)) {
             setFocused(searchBox);
             return true;
         }
-        
-        return super.mouseClicked(x, y, button);
+
+        return false;
     }
 
     @Override
     public boolean mouseReleased(double x, double y, int button) {
         if (this.list.isMouseOver(x, y) && this.list.mouseReleased(x, y, button)) return true;
-        if (this.searchBox.isMouseOver(x, y) && this.searchBox.mouseReleased(x, y, button)) return true;
-        
-        return super.mouseReleased(x, y, button);
+        return this.searchBox != null && this.searchBox.isMouseOver(x, y) && this.searchBox.mouseReleased(x, y, button);
     }
-    
+
     @Override
     public void mouseMoved(double x, double y) {
         if (this.list.isMouseOver(x, y)) this.list.mouseMoved(x, y);
-        if (this.searchBox.isMouseOver(x, y)) this.searchBox.mouseMoved(x, y);
-        
+        if (this.searchBox != null && this.searchBox.isMouseOver(x, y)) this.searchBox.mouseMoved(x, y);
+
         super.mouseMoved(x, y);
     }
-    
+
     @Override
     public boolean mouseDragged(double x, double y, int button, double fx, double fy) {
         if (this.list.isMouseOver(fx, fy) && this.list.mouseDragged(x, y, button, fx, fy)) return true;
-        if (this.searchBox.isMouseOver(fx, fy) && this.searchBox.mouseDragged(x, y, button, fx, fy)) return true;
-        
+        if (this.searchBox != null && this.searchBox.isMouseOver(fx, fy) && this.searchBox.mouseDragged(x, y, button, fx, fy))
+            return true;
+
         return super.mouseDragged(x, y, button, fx, fy);
     }
 
@@ -241,7 +263,8 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (list.keyPressed(keyCode, scanCode, modifiers) || searchBox.keyPressed(keyCode, scanCode, modifiers)) return true;
+        if (list.keyPressed(keyCode, scanCode, modifiers) || searchBox.keyPressed(keyCode, scanCode, modifiers))
+            return true;
         return ContainerEventHandler.super.keyPressed(keyCode, scanCode, modifiers);
     }
 
@@ -259,15 +282,11 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
         return this.list.query;
     }
 
-    public void update(List<? extends AbstractClientUser> users) {
-        this.list.update(users);
-    }
-
-    public void onClick(Consumer<ListWidget.Entry> consumer) {
+    public void onClick(Consumer<WrappedList.Entry> consumer) {
         if (this.onClick == null) {
             this.onClick = consumer;
         } else {
-            Consumer<ListWidget.Entry> onClick = this.onClick;
+            Consumer<WrappedList.Entry> onClick = this.onClick;
             this.onClick = entry -> {
                 onClick.accept(entry);
                 consumer.accept(entry);
@@ -275,11 +294,11 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
         }
     }
 
-    public void onClickButton(BiConsumer<ListWidget.Entry, Button> consumer) {
+    public void onClickButton(BiConsumer<WrappedList.Entry, Button> consumer) {
         if (this.onClickButton == null) {
             this.onClickButton = consumer;
         } else {
-            BiConsumer<ListWidget.Entry, Button> onClickButton = this.onClickButton;
+            BiConsumer<WrappedList.Entry, Button> onClickButton = this.onClickButton;
             this.onClickButton = (entry, btn) -> {
                 onClickButton.accept(entry, btn);
                 consumer.accept(entry, btn);
@@ -316,7 +335,15 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
     @Override
     public void updateWidgetNarration(@NotNull NarrationElementOutput p_169152_) {
+        // No narration
+    }
 
+    public int getCount() {
+        return count;
+    }
+
+    public BaseScreen getScreen() {
+        return screen;
     }
 
     public boolean hasSearch() {
@@ -325,29 +352,41 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
     @Nullable
     public AbstractClientUser getSelected() {
-        ListWidget.Entry selected = list.getSelected();
+        WrappedList.Entry selected = list.getSelected();
         return selected == null ? null : selected.user;
     }
 
-    public static class ListWidget extends ContainerObjectSelectionList<ListWidget.Entry> {
+    @Override
+    public void reloadTheme() {
+        this.theme = UltreonLib.getTheme();
+        switch (theme) {
+            case DARK -> guiTexture = TEXTURE_DARK;
+            case LIGHT, MIX -> guiTexture = TEXTURE_LIGHT;
+            default -> guiTexture = TEXTURE_NORMAL;
+        }
+
+        if (list != null) {
+            list.reloadTheme();
+        }
+    }
+
+    public static class WrappedList extends ContainerObjectSelectionList<WrappedList.Entry> {
         private final Minecraft mc;
-        private final List<AbstractClientUser> users;
-        @Getter
         private final UserListWidget widget;
         private final Object entriesLock = new Object();
-        private final Object usersLock = new Object();
+        private ResourceLocation guiTexture;
         private String query;
+        private Consumer<WrappedList> addEntries;
+        private final Object usersLock = new Object();
+        private List<AbstractClientUser> users;
 
-        public ListWidget(UserListWidget widget, List<AbstractClientUser> users, Minecraft mc, int width, int height, int top, int bottom, int itemHeight) {
+        public WrappedList(UserListWidget widget, List<AbstractClientUser> users, Minecraft mc, int width, int height, int top, int bottom, int itemHeight) {
             super(mc, width, height, top, bottom, itemHeight);
             this.mc = mc;
-
-            for (AbstractClientUser user : users) {
-                this.addEntry(new Entry(this.mc, this, user.getName(), null, user::getSkinLocation, user));
-            }
-
             this.users = users;
+
             this.widget = widget;
+            this.guiTexture = widget.guiTexture;
 
             this.setRenderSelection(false);
             this.setRenderBackground(false);
@@ -356,7 +395,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
         @Override
         protected int getRowTop(int index) {
-            return this.y0 - (int)this.getScrollAmount() + index * this.itemHeight + this.headerHeight;
+            return this.y0 - (int) this.getScrollAmount() + index * this.itemHeight + this.headerHeight;
         }
 
         @Override
@@ -369,115 +408,26 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
         }
 
         @Override
-        public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float frameTime) {
+        public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
             double scaleFactor = this.mc.getWindow().getGuiScale();
 
-            int yi = y0 + (60 - 18); // Idk anymore
+            int yi = y0 + 60 - 18; // Idk anymore
             int yj = y1 - y0;
             RenderSystem.enableScissor(
-                    (int) ((double) (this.getRowLeft()) * scaleFactor),
-                    (int) ((double) ((widget.screen.height - yi)) * scaleFactor),
-                    (int) ((double) (this.getRowWidth() + 6) * scaleFactor),
-                    (int) ((double) (yj) * scaleFactor)
+                    (int) (this.getRowLeft() * scaleFactor),
+                    (int) ((widget.screen.height - yi) * scaleFactor),
+                    (int) ((this.getRowWidth() + 6) * scaleFactor),
+                    (int) (yj * scaleFactor)
             );
             synchronized (entriesLock) {
-                super.render(gfx, mouseX, mouseY, frameTime);
-//                this.renderBackground(pose);
-//                int i = this.getScrollbarPosition();
-//                int j = i + 6;
-//                Tesselator tesselator = Tesselator.getInstance();
-//                BufferBuilder bufferbuilder = tesselator.getBuilder();
-//                RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-//                this.hovered = this.isMouseOver(mouseX, mouseY) ? this.getEntryAtPosition(mouseX, mouseY) : null;
-//                if (this.renderBackground) {
-//                    RenderSystem.setShaderTexture(0, GuiComponent.BACKGROUND_LOCATION);
-//                    RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-//                    float f = 32.0F;
-//                    bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-//                    bufferbuilder.vertex(this.x0, this.y1, 0.0D).uv((float)this.x0 / 32.0F, (float)(this.y1 + (int)this.getScrollAmount()) / 32.0F).color(32, 32, 32, 255).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y1, 0.0D).uv((float)this.x1 / 32.0F, (float)(this.y1 + (int)this.getScrollAmount()) / 32.0F).color(32, 32, 32, 255).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y0, 0.0D).uv((float)this.x1 / 32.0F, (float)(this.y0 + (int)this.getScrollAmount()) / 32.0F).color(32, 32, 32, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.y0, 0.0D).uv((float)this.x0 / 32.0F, (float)(this.y0 + (int)this.getScrollAmount()) / 32.0F).color(32, 32, 32, 255).endVertex();
-//                    tesselator.end();
-//                }
-//
-//                int j1 = this.getRowLeft();
-//                int k = this.y0 - (int)this.getScrollAmount();
-//                if (this.renderHeader) {
-//                    this.renderHeader(pose, j1, k, tesselator);
-//                }
-//
-//                this.renderList(pose, j1, k, mouseX, mouseY, frameTime);
-//                if (this.renderTopAndBottom) {
-//                    RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-//                    RenderSystem.setShaderTexture(0, GuiComponent.BACKGROUND_LOCATION);
-//                    RenderSystem.enableDepthTest();
-//                    RenderSystem.depthFunc(519);
-//                    float f1 = 32.0F;
-//                    int l = -100;
-//                    bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-//                    bufferbuilder.vertex(this.x0, this.y0, -100.0D).uv(0.0F, (float)this.y0 / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0 + this.width, this.y0, -100.0D).uv((float)this.width / 32.0F, (float)this.y0 / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0 + this.width, 0.0D, -100.0D).uv((float)this.width / 32.0F, 0.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, 0.0D, -100.0D).uv(0.0F, 0.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.height, -100.0D).uv(0.0F, (float)this.height / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0 + this.width, this.height, -100.0D).uv((float)this.width / 32.0F, (float)this.height / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0 + this.width, this.y1, -100.0D).uv((float)this.width / 32.0F, (float)this.y1 / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.y1, -100.0D).uv(0.0F, (float)this.y1 / 32.0F).color(64, 64, 64, 255).endVertex();
-//                    tesselator.end();
-//                    RenderSystem.depthFunc(515);
-//                    RenderSystem.disableDepthTest();
-//                    RenderSystem.enableBlend();
-//                    RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ZERO, GlStateManager.DestFactor.ONE);
-//                    RenderSystem.disableTexture();
-//                    RenderSystem.setShader(GameRenderer::getPositionColorShader);
-//                    bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-//                    bufferbuilder.vertex(this.x0, this.y0, 0.0D).color(0, 0, 0, 0).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y0, 0.0D).color(0, 0, 0, 0).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y0, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.y0, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.y1, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y1, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(this.x1, this.y1, 0.0D).color(0, 0, 0, 0).endVertex();
-//                    bufferbuilder.vertex(this.x0, this.y1, 0.0D).color(0, 0, 0, 0).endVertex();
-//                    tesselator.end();
-//                }
-//
-//                int k1 = this.getMaxScroll();
-//                if (k1 > 0) {
-//                    RenderSystem.disableTexture();
-//                    RenderSystem.setShader(GameRenderer::getPositionColorShader);
-//                    int l1 = (int)((float)((this.y1 - this.y0) * (this.y1 - this.y0)) / (float)this.getMaxPosition());
-//                    l1 = Mth.clamp(l1, 32, this.y1 - this.y0 - 8);
-//                    int i2 = (int)this.getScrollAmount() * (this.y1 - this.y0 - l1) / k1 + this.y0;
-//                    if (i2 < this.y0) {
-//                        i2 = this.y0;
-//                    }
-//
-//                    bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-//                    bufferbuilder.vertex(i, this.y1, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(j, this.y1, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(j, this.y0, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(i, this.y0, 0.0D).color(0, 0, 0, 255).endVertex();
-//                    bufferbuilder.vertex(i, i2 + l1, 0.0D).color(128, 128, 128, 255).endVertex();
-//                    bufferbuilder.vertex(j, i2 + l1, 0.0D).color(128, 128, 128, 255).endVertex();
-//                    bufferbuilder.vertex(j, i2, 0.0D).color(128, 128, 128, 255).endVertex();
-//                    bufferbuilder.vertex(i, i2, 0.0D).color(128, 128, 128, 255).endVertex();
-//                    bufferbuilder.vertex(i, i2 + l1 - 1, 0.0D).color(192, 192, 192, 255).endVertex();
-//                    bufferbuilder.vertex(j - 1, i2 + l1 - 1, 0.0D).color(192, 192, 192, 255).endVertex();
-//                    bufferbuilder.vertex(j - 1, i2, 0.0D).color(192, 192, 192, 255).endVertex();
-//                    bufferbuilder.vertex(i, i2, 0.0D).color(192, 192, 192, 255).endVertex();
-//                    tesselator.end();
-//                }
-//
-//                this.renderDecorations(pose, mouseX, mouseY);
-//                RenderSystem.enableTexture();
-//                RenderSystem.disableBlend();
-//                UserListWidget.fill(pose, 0, 0, widget.screen.width, widget.screen.height, 0x7f007fff);
+                super.render(gfx, mouseX, mouseY, partialTicks);
             }
             RenderSystem.disableScissor();
+        }
 
-//            UserListWidget.fill(pose, this.getRowLeft(), yi, this.getRowLeft() + this.getRowWidth() + 6, yi + yj, 0x7f7f00ff);
+        @Override
+        public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+            return super.mouseClicked(pMouseX, pMouseY, pButton);
         }
 
         public void search(String text) {
@@ -501,46 +451,37 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                     for (AbstractClientUser user : this.users) {
                         String name = user.getName();
                         if (name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
-                            this.addEntry(new Entry(this.mc, this, user.getName(), null, user::getSkinLocation, user));
+                            this.addEntry(new Entry(this.mc, this, user.getName(), null, user::getSkinLocation, user, guiTexture));
                         }
                     }
                 }
             }
         }
 
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            // TODO: Port this if necessary.
-//            switch (keyCode) {
-//                case 264:
-//                    this.setSelected();
-//                    return true;
-//                case 265:
-//                    this.moveSelection(SelectionDirection.UP);
-//                    return true;
-//                default:
-//                    return false;
-//            }
-            return false;
+        public void reloadTheme() {
+            this.guiTexture = widget.guiTexture;
+            this.reloadEntries();
         }
 
+        @SuppressWarnings("unused")
         @Environment(EnvType.CLIENT)
-        public static class Entry extends ContainerObjectSelectionList.Entry<Entry> {
+        public static class Entry extends ContainerObjectSelectionList.Entry<UserListWidget.WrappedList.Entry> {
             public static final int NO_DESC_TEXT_COLOR = FastColor.ARGB32.color(255, 74, 74, 74);
             public static final int DESC_COLOR = FastColor.ARGB32.color(255, 48, 48, 48);
             public static final int TITLE_COLOR = FastColor.ARGB32.color(255, 255, 255, 255);
             public static final int TEXT_COLOR = FastColor.ARGB32.color(140, 255, 255, 255);
 
             private final Minecraft mc;
-            private final @NotNull ListWidget list;
+            private final @NotNull UserListWidget.WrappedList list;
             private final String entryTitle;
             private final Supplier<ResourceLocation> texture;
             private final AbstractClientUser user;
             private final Component description;
             private final List<Button> buttons;
             private float ticksTooltip;
+            private final ResourceLocation guiTexture;
 
-            public Entry(@NotNull Minecraft minecraft, @NotNull ListWidget list, @NotNull String title, @org.jetbrains.annotations.Nullable String description, @NotNull Supplier<@NotNull ResourceLocation> texture, @NotNull AbstractClientUser user) {
+            public Entry(@NotNull Minecraft minecraft, @NotNull WrappedList list, @NotNull String title, @Nullable String description, @NotNull Supplier<@NotNull ResourceLocation> texture, @NotNull AbstractClientUser user, @NotNull ResourceLocation guiTexture) {
                 this.mc = minecraft;
                 this.list = list;
                 this.entryTitle = title;
@@ -548,6 +489,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                 this.texture = texture;
                 this.buttons = ImmutableList.of();
                 this.user = user;
+                this.guiTexture = guiTexture;
             }
 
             @SuppressWarnings("UnnecessaryLocalVariable")
@@ -558,8 +500,6 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                 final int j = top + (height - ICON_SIZE) / 2;
                 final int k = i + 8 + 4 + 2;
                 final int l = top + (height - mc.font.lineHeight) / 2;
-
-                RenderSystem.setShaderTexture(0, GUI_LOCATION);
 
                 // Entry section
                 final int es = 4;
@@ -593,23 +533,20 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                 final int eu = es + es;
 
                 // Render
-                gfx.blit(GUI_LOCATION, sx, ty, es, es, su, tv, es, es, TEX_W, TEX_H); // Top left
-                gfx.blit(GUI_LOCATION, mx, ty, iw, es, es, tv, es, es, TEX_W, TEX_H); // Top
-                gfx.blit(GUI_LOCATION, ex, ty, es, es, eu, tv, es, es, TEX_W, TEX_H); // Top right
-                gfx.blit(GUI_LOCATION, sx, my, es, ih, su, mv, es, es, TEX_W, TEX_H); // Middle left
-                gfx.blit(GUI_LOCATION, mx, my, iw, ih, es, mv, es, es, TEX_W, TEX_H); // Middle
-                gfx.blit(GUI_LOCATION, ex, my, es, ih, eu, mv, es, es, TEX_W, TEX_H); // Middle right
-                gfx.blit(GUI_LOCATION, sx, by, es, es, su, bv, es, es, TEX_W, TEX_H); // Bottom left
-                gfx.blit(GUI_LOCATION, mx, by, iw, es, es, bv, es, es, TEX_W, TEX_H); // Bottom
-                gfx.blit(GUI_LOCATION, ex, by, es, es, eu, bv, es, es, TEX_W, TEX_H); // Bottom right
+                gfx.blit(guiTexture, sx, ty, es, es, su, tv, es, es, TEX_W, TEX_H); // Top left
+                gfx.blit(guiTexture, mx, ty, iw, es, es, tv, es, es, TEX_W, TEX_H); // Top
+                gfx.blit(guiTexture, ex, ty, es, es, eu, tv, es, es, TEX_W, TEX_H); // Top right
+                gfx.blit(guiTexture, sx, my, es, ih, su, mv, es, es, TEX_W, TEX_H); // Middle left
+                gfx.blit(guiTexture, mx, my, iw, ih, es, mv, es, es, TEX_W, TEX_H); // Middle
+                gfx.blit(guiTexture, ex, my, es, ih, eu, mv, es, es, TEX_W, TEX_H); // Middle right
+                gfx.blit(guiTexture, sx, by, es, es, su, bv, es, es, TEX_W, TEX_H); // Bottom left
+                gfx.blit(guiTexture, mx, by, iw, es, es, bv, es, es, TEX_W, TEX_H); // Bottom
+                gfx.blit(guiTexture, ex, by, es, es, eu, bv, es, es, TEX_W, TEX_H); // Bottom right
 
-                ResourceLocation texture = this.texture.get();
-                RenderSystem.setShaderTexture(0, texture);
-                gfx.blit(texture, i, j, ICON_SIZE, ICON_SIZE, 8.0F, 8.0F, 8, 8, 64, 64);
                 RenderSystem.enableBlend();
-                gfx.blit(texture, i, j, ICON_SIZE, ICON_SIZE, 40.0F, 8.0F, 8, 8, 64, 64);
+                gfx.blit(guiTexture, i, j, ICON_SIZE, ICON_SIZE, 40.0F, 8.0F, 8, 8, 64, 64);
                 RenderSystem.disableBlend();
-                gfx.drawString(this.mc.font, this.entryTitle, k, l + 1, TITLE_COLOR);
+                gfx.drawString(this.mc.font, this.entryTitle, k, (int) ((float) l + 1), list.widget.theme.getTextColor(), false);
 
                 float f = this.ticksTooltip;
 
@@ -619,7 +556,6 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             }
 
             public @NotNull List<? extends GuiEventListener> children() {
-                //      return screen.getEntryButtons();
                 return this.buttons;
             }
 
@@ -633,13 +569,8 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                 return description;
             }
 
-            public @NotNull ListWidget getList() {
+            public @NotNull UserListWidget.WrappedList getList() {
                 return list;
-            }
-
-            @NotNull
-            public AbstractClientUser getUser() {
-                return user;
             }
 
             @Override
@@ -649,8 +580,11 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
             @Override
             public boolean mouseClicked(double p_94695_, double p_94696_, int p_94697_) {
+                return true;
+            }
+
+            public boolean click() {
                 list.setSelected(this);
-                super.mouseClicked(p_94695_, p_94696_, p_94697_);
                 return true;
             }
         }

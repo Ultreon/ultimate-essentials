@@ -1,6 +1,7 @@
 package io.github.ultreon.mods.essentials.util.homes;
 
 import io.github.ultreon.mods.essentials.UEssentials;
+import io.github.ultreon.mods.essentials.event.HomeEvent;
 import io.github.ultreon.mods.essentials.homes.Home;
 import io.github.ultreon.mods.essentials.homes.HomeReference;
 import io.github.ultreon.mods.essentials.util.BaseLocation;
@@ -76,7 +77,11 @@ public final class ServerHome extends Home implements Saveable, BaseLocation {
         if (server != null) {
             ServerLevel level1 = server.getLevel(level);
             if (level1 != null) {
+                if (HomeEvent.TELEPORTING.invoker().onTeleporting(player, this).isFalse()) {
+                    return false;
+                }
                 player.teleportTo(level1, position.x, position.y, position.z, rotation.y, rotation.x);
+                HomeEvent.TELEPORTED.invoker().onTeleported(player, this);
             }
             return true;
         }

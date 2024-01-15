@@ -1,5 +1,6 @@
 package io.github.ultreon.mods.essentials.util.homes;
 
+import io.github.ultreon.mods.essentials.event.HomeEvent;
 import io.github.ultreon.mods.essentials.homes.HomeReference;
 import io.github.ultreon.mods.essentials.network.Networking;
 import io.github.ultreon.mods.essentials.network.homes.ListHomesPacket;
@@ -57,11 +58,13 @@ public class ServerHomes {
     public void setHome(ServerHome home) {
         homes.remove(home);
         homes.add(home);
+        HomeEvent.SET.invoker().onSet(home, owner);
     }
 
     @Nullable
     public ServerHome add(ServerHome home) {
         homes.add(home);
+        HomeEvent.CREATED.invoker().onCreated(home, owner);
         return home;
     }
 
@@ -75,6 +78,7 @@ public class ServerHomes {
 
     public void delete(ServerHome home) {
         homes.remove(home);
+        HomeEvent.REMOVED.invoker().onRemoved(home, owner);
     }
 
     private boolean teleport(ServerPlayer player, ServerHome home) {

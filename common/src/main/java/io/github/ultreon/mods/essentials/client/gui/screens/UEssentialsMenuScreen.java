@@ -1,6 +1,9 @@
 package io.github.ultreon.mods.essentials.client.gui.screens;
 
+import com.ultreon.mods.lib.UltreonLib;
 import com.ultreon.mods.lib.client.gui.widget.BaseButton;
+import com.ultreon.mods.lib.client.gui.widget.ListWidget;
+import io.github.ultreon.mods.essentials.client.UEssentialsClient;
 import io.github.ultreon.mods.essentials.client.gui.screens.users.UserListWidget;
 import io.github.ultreon.mods.essentials.client.gui.widget.UserWidget;
 import io.github.ultreon.mods.essentials.user.AbstractClientUser;
@@ -45,9 +48,9 @@ public abstract class UEssentialsMenuScreen extends com.ultreon.mods.lib.client.
 
     @SuppressWarnings("unused")
     public UserListWidget addUserListRow(int count, boolean hasSearch, List<AbstractClientUser> users) {
-        UserListWidget widget = new UserListWidget(this, 0, 0, width() - 6 - 7, count, hasSearch, title, users);
+        UserListWidget widget = new UserListWidget(this, 0, 0, width() - 6 - 7, 72, count, hasSearch, title, UltreonLib.getTheme(), users);
         widget.setWidth(width() - 6 - 6);
-        this.addRenderableWidget(widget, 26, width() - 5 - 5, 24, 5, 0, 4, 0, 226);
+        this.addRenderableWidget(widget, 74, width() - 5 - 5, 72, 5, 0, 4, 0, 226);
         addRenderableWidget(widget);
         return widget;
     }

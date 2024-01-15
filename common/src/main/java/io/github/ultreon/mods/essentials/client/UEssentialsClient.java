@@ -6,11 +6,14 @@ import dev.architectury.event.events.client.ClientTickEvent;
 import dev.architectury.injectables.annotations.ExpectPlatform;
 import dev.architectury.platform.Platform;
 import dev.architectury.utils.Env;
+import io.github.ultreon.mods.essentials.client.gui.UIManager;
 import io.github.ultreon.mods.essentials.client.input.ModControls;
 import io.github.ultreon.mods.essentials.user.LocalUser;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.LoadingOverlay;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,6 +62,7 @@ public class UEssentialsClient {
     }
 
     private LocalUser user;
+    private UIManager uiManager;
 
     public UEssentialsClient() {
         instance = this;

@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static io.github.ultreon.mods.essentials.util.MoneyUtils.SIGN;
+
 public final class ShopScreen extends BaseScreen {
     private static final ResourceLocation GUI_TEXTURE = UEssentialsClient.res("textures/gui/shop.png");
     private static final ResourceLocation LOADING_TEXTURE = UEssentialsClient.res("textures/gui/shop_loading.png");
@@ -496,6 +498,11 @@ public final class ShopScreen extends BaseScreen {
         DecimalFormat df = new DecimalFormat();
         df.setMaximumFractionDigits(2);
         df.setMinimumFractionDigits(2);
-        title1 = Component.translatable("gui.ultimate_essentials.shop.title", df.format(balance).replaceAll(",00", ",-"));
+        title1 = Component.translatable("gui.ultimate_essentials.shop.title", SIGN + df.format(balance).replaceAll(",00", ",-"));
+    }
+
+    @Override
+    public boolean isPauseScreen() {
+        return false;
     }
 }

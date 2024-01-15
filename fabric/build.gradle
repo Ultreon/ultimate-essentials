@@ -7,7 +7,12 @@ loom {
 
     runs {
         client {
-            programArgs("--username", "Dev", "--uuid", "b734dabc-0bd6-4e9c-8790-7a226391abd6")
+            programArgs "--username", "Dev", "--uuid", "380df991-f603-344c-a090-369bad2a924a"
+        }
+        clientAlt {
+            inherit client
+            name = "Minecraft Client Alt"
+            programArgs "--username", "DevAlt", "--uuid", "71cbc1f7-988c-3d07-90cb-08a645100f4b"
         }
     }
 }
@@ -37,6 +42,8 @@ dependencies {
 
     modApi("com.github.Ultreon.ultreonlib:ultreon-lib-fabric:$ultreonlib_version")
     modApi("com.terraformersmc:modmenu:$modmenu_version")
+
+    modApi "fuzs.forgeconfigapiport:forgeconfigapiport-fabric:$forge_config_api_port_version"
 
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }

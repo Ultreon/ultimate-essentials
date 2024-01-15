@@ -63,7 +63,7 @@ public class UEssentials {
     public static final String MOD_ID = "ultimate_essentials";
 
     // Mod Data
-    public static final String NBT_NAME = UEssentialsMain.NBT_NAME;
+    public static final String NBT_NAME = "UltimateEssentials";
     public static final String MOD_NAME;
     public static final String MOD_VERSION;
     public static final String MOD_DESCRIPTION;
@@ -120,7 +120,7 @@ public class UEssentials {
      */
     public UEssentials() {
         // Pre-boot.
-        LOGGER.info("Booting " + MOD_NAME + " (" + NBT_NAME + ")");
+        LOGGER.info("Booting {}", MOD_NAME);
 
         UEssentials.instance = this;
 
@@ -196,7 +196,7 @@ public class UEssentials {
         if (dataFile.exists()) {
             try {
                 load(NbtIo.readCompressed(dataFile));
-            } catch (Throwable t) {
+            } catch (Exception t) {
                 LOGGER.error("Error occurred when loading server data:", t);
             }
         }

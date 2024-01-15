@@ -11,8 +11,10 @@ import io.github.ultreon.mods.essentials.network.economy.*;
 import io.github.ultreon.mods.essentials.network.homes.*;
 import io.github.ultreon.mods.essentials.network.moderation.*;
 import io.github.ultreon.mods.essentials.network.permission.*;
-import io.github.ultreon.mods.essentials.network.screen.ErrorScreenPacket;
+import io.github.ultreon.mods.essentials.network.ui.ErrorScreenPacket;
 import io.github.ultreon.mods.essentials.network.teleport.*;
+import io.github.ultreon.mods.essentials.network.ui.SetOverlayMessagePacket;
+import io.github.ultreon.mods.essentials.network.ui.ShowOverlayMessagePacket;
 import io.github.ultreon.mods.essentials.network.warps.*;
 import io.github.ultreon.mods.essentials.user.ServerUser;
 import net.minecraft.network.chat.Component;
@@ -51,8 +53,10 @@ public final class Networking extends Network {
 
     @Override
     protected void registerPackets(PacketRegisterContext ctx) {
-        // Other packets.
+        // UI packets
         ctx.register(ErrorScreenPacket::new);
+        ctx.register(ShowOverlayMessagePacket::new);
+        ctx.register(SetOverlayMessagePacket::new);
 
         // Home packets
         ctx.register(SetHomePacket::new);

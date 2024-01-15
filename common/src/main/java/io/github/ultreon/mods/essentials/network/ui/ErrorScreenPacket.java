@@ -1,7 +1,10 @@
-package io.github.ultreon.mods.essentials.network.screen;
+package io.github.ultreon.mods.essentials.network.ui;
 
 import com.ultreon.mods.lib.network.api.packet.PacketToClient;
+import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
 import io.github.ultreon.mods.essentials.client.gui.screens.message.ErrorScreen;
+import io.github.ultreon.mods.essentials.user.LocalUser;
 import io.github.ultreon.mods.essentials.util.LevelUtils;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
@@ -55,10 +58,12 @@ public class ErrorScreenPacket extends PacketToClient<ErrorScreenPacket> {
 
     @Override
     protected void handle() {
-        if (disconnect) {
-            LevelUtils.saveLevelThenOpen(new ErrorScreen(title, description));
-        } else {
-            Minecraft.getInstance().setScreen(new ErrorScreen(Minecraft.getInstance().screen, title, description));
-        }
+        EnvExecutor.runInEnv(Env.CLIENT, () -> () -> {
+            if (disconnect) {
+                LevelUtils.saveLevelThen(() -> new ErrorScreen(title, description).open());
+            } else {
+                LocalUser.get().showError(title, description);
+            }
+        });
     }
 }

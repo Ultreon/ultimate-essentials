@@ -11,6 +11,8 @@ dependencies {
 
     modApi("com.github.Ultreon.ultreonlib:ultreon-lib:$ultreonlib_version")
 
+    modApi "fuzs.forgeconfigapiport:forgeconfigapiport-common:$forge_config_api_port_version"
+
     // Lombok
     implementation 'org.projectlombok:lombok:1.18.28'
     annotationProcessor 'org.projectlombok:lombok:1.18.28'

@@ -19,7 +19,10 @@ import net.minecraft.client.User;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -43,6 +46,11 @@ public class LocalUser extends AbstractClientUser {
         ClientPlayerEvent.CLIENT_PLAYER_QUIT.register(this::onQuit);
     }
 
+    @Override
+    public ResourceLocation getSkinLocation() {
+        return Minecraft.getInstance().getSkinManager().getInsecureSkinLocation(getProfile());
+    }
+
     public static LocalUser create(User user) {
         if (instance != null) {
             return instance;
@@ -60,15 +68,7 @@ public class LocalUser extends AbstractClientUser {
 
     @Override
     public GameProfile getProfile() {
-        ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        if (connection != null) {
-            PlayerInfo playerInfo = connection.getPlayerInfo(id);
-            if (playerInfo != null) {
-                return playerInfo.getProfile();
-            }
-        }
-
-        return null;
+        return Minecraft.getInstance().getUser().getGameProfile();
     }
 
     @Override
@@ -271,5 +271,9 @@ public class LocalUser extends AbstractClientUser {
     public float getExpProgress() {
         LocalPlayer player = player();
         return player == null ? -1 : player.experienceProgress;
+    }
+
+    public void play(SoundEvent sound) {
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sound, 1.0F));
     }
 }

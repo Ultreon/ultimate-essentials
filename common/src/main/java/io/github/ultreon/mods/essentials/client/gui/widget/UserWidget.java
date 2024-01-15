@@ -40,7 +40,7 @@ public class UserWidget extends BaseWidget {
     }
 
     public UserWidget(int x, int y, int width, int height, AbstractClientUser user, Theme theme) {
-        super(x, y, Math.max(width, 26), Math.max(height, 26), Component.literal(user.getProfile().getName()));
+        super(x, y, Math.max(width, 26), Math.max(height, 26), Component.literal(user.getName()));
         this.texture = user::getSkinLocation;
         this.user = user;
         this.theme = theme;

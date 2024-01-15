@@ -8,7 +8,9 @@ import io.github.ultreon.mods.essentials.UEssentials;
 import io.github.ultreon.mods.essentials.network.Networking;
 import io.github.ultreon.mods.essentials.network.SetUserFlagPacket;
 import io.github.ultreon.mods.essentials.network.economy.SetBalancePacket;
-import io.github.ultreon.mods.essentials.network.screen.ErrorScreenPacket;
+import io.github.ultreon.mods.essentials.network.ui.ErrorScreenPacket;
+import io.github.ultreon.mods.essentials.network.ui.SetOverlayMessagePacket;
+import io.github.ultreon.mods.essentials.network.ui.ShowOverlayMessagePacket;
 import io.github.ultreon.mods.essentials.shop.ServerShop;
 import io.github.ultreon.mods.essentials.shop.ShopItem;
 import io.github.ultreon.mods.essentials.teleport.ServerTeleportManager;
@@ -75,10 +77,8 @@ public final class ServerUser extends User {
 
         // Create user data directory.
         File userdata = UEssentials.getDataFile("userdata");
-        if (!userdata.exists()) {
-            if (!userdata.mkdirs()) {
-                throw new IOError(new IOException("Couldn't create directory: " + userdata));
-            }
+        if (!userdata.exists() && !userdata.mkdirs()) {
+            throw new IOError(new IOException("Couldn't create directory: " + userdata));
         }
 
         // Read user data.
@@ -92,7 +92,7 @@ public final class ServerUser extends User {
         if (this.mainFile.exists()) {
             try {
                 load(NbtIo.readCompressed(mainFile));
-            } catch (Throwable t) {
+            } catch (Exception t) {
                 UEssentials.LOGGER.error("Failed to load server user:", t);
             }
         }
@@ -113,11 +113,9 @@ public final class ServerUser extends User {
                 disconnect("Access Denied\nConnection isn't encrypted");
                 return;
             }
-            if (player.connection.connection.isConnected()) {
-                if (balance != prevBalance) {
-                    Networking.get().sendToClient(new SetBalancePacket(balance), player);
-                    prevBalance = balance;
-                }
+            if (player.connection.connection.isConnected() && balance != prevBalance) {
+                Networking.get().sendToClient(new SetBalancePacket(balance), player);
+                prevBalance = balance;
             }
         }
     }
@@ -645,5 +643,17 @@ public final class ServerUser extends User {
 
     public void sendChat(Component message) {
         player().sendSystemMessage(message);
+    }
+
+    public void sendOverlayMessage(Component title, Component message) {
+        send(new ShowOverlayMessagePacket(title, message));
+    }
+
+    public void setOverlayMessage(@Nullable Component title, @Nullable Component message) {
+        send(new SetOverlayMessagePacket(title, message));
+    }
+
+    public void hideOverlayMessage() {
+        send(new ShowOverlayMessagePacket(null, null));
     }
 }

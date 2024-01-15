@@ -1,5 +1,8 @@
 package io.github.ultreon.mods.essentials.teleport;
 
+import com.ultreon.mods.lib.util.ServerLifecycle;
+import io.github.ultreon.mods.essentials.UEssentialsConfig;
+import io.github.ultreon.mods.essentials.event.TeleportEvent;
 import io.github.ultreon.mods.essentials.network.Networking;
 import io.github.ultreon.mods.essentials.network.teleport.TpRequestedFromPacket;
 import io.github.ultreon.mods.essentials.network.teleport.TpRequestedToPacket;
@@ -10,6 +13,7 @@ import lombok.Setter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -60,6 +64,7 @@ public class ServerTeleportManager extends BaseTeleportManager {
         UEssentials.LOGGER.debug(requesterUUID);
         UEssentials.LOGGER.debug(recipientEntries);
         List<TeleportRequest> teleportRequests = new ArrayList<>(recipientEntries.get(this.uuid));
+
         for (TeleportRequest request : teleportRequests) {
             UEssentials.LOGGER.debug(request);
             if (request.getSender().equals(requesterUUID)) {
@@ -73,9 +78,25 @@ public class ServerTeleportManager extends BaseTeleportManager {
         // Remove request.
         remove(request);
 
-        // Teleport
-        get(request.origin()).backLocation = ServerUser.get(request.origin()).getLocation();
-        teleport(request.origin(), request.destination());
+        TeleportEvent.ACCEPTED.invoker().onResponse(this.getServerPlayer(), request);
+
+        ServerUser sender = ServerUser.get(request.getSender());
+        sender.sendOverlayMessage(Component.translatable("message.ultimate_essentials.tpRequest.accepted"), Component.translatable("message.ultimate_essentials.tpRequest.accepted.info", sender.getName(), UEssentialsConfig.TP_DELAY.get()));
+        var countdown = new TeleportCountdown();
+
+        ServerLifecycle.getCurrentServer().doRunTask(new TickTask(1, () -> countdownTick(request, countdown, sender)));
+    }
+
+    private void countdownTick(TeleportRequest request, TeleportCountdown countdown, ServerUser sender) {
+        if (countdown.tick() > 0) {
+            // Countdown
+            sender.setOverlayMessage(Component.translatable("message.ultimate_essentials.tpRequest.accepted"), Component.translatable("message.ultimate_essentials.tpRequest.accepted.info", sender.getName(), countdown.current / 20));
+            ServerLifecycle.getCurrentServer().doRunTask(new TickTask(1, () -> countdownTick(request, countdown, sender)));
+        } else {
+            // Teleport
+            ServerTeleportManager.get(request.origin()).backLocation = ServerUser.get(request.origin()).getLocation();
+            teleport(request.origin(), request.destination());
+        }
     }
 
     public void teleportTo(UUID destinationUUID) {
@@ -113,6 +134,8 @@ public class ServerTeleportManager extends BaseTeleportManager {
     private void deny0(TeleportRequest request) {
         // Remove request.
         remove(request);
+
+        TeleportEvent.DENIED.invoker().onResponse(this.getServerPlayer(), request);
     }
 
     /**
@@ -126,29 +149,32 @@ public class ServerTeleportManager extends BaseTeleportManager {
         UEssentials.LOGGER.debug(recipientEntries.computeIfAbsent(request.getReceiver(), uuid -> new HashSet<>()).remove(request));
     }
 
+    /**
+     * Accepts all teleport requests for a player.
+     */
     public void acceptAll() {
-        boolean acceptorHasOriginRequest = false;
-        boolean acceptorHasOverflow = false;
+        boolean outboundRequest = false;
+        boolean overflown = false;
 
         TeleportRequest toSender = null;
         List<TeleportRequest> toReceiver = new ArrayList<>();
 
         for (TeleportRequest request : ServerTeleportManager.recipientEntries.get(uuid)) {
             if (request.getTo() == TeleportRequest.TpDirection.SENDER) {
-                if (acceptorHasOriginRequest) {
+                if (outboundRequest) {
                     toSender = null;
-                    acceptorHasOverflow = true;
+                    overflown = true;
                 } else {
                     toSender = request;
-                    acceptorHasOriginRequest = true;
+                    outboundRequest = true;
                 }
             } else if (request.getTo() == TeleportRequest.TpDirection.RECEIVER) {
                 toReceiver.add(request);
             }
         }
 
-        if (acceptorHasOverflow) {
-            getServerPlayer().sendSystemMessage(Component.literal("You can't teleport to multiple destinations."));
+        if (overflown) {
+            getServerPlayer().sendSystemMessage(Component.translatable("message.ultimate_essentials.tpRequest.overflown"));
             return;
         }
 
@@ -165,15 +191,21 @@ public class ServerTeleportManager extends BaseTeleportManager {
 
     @Override
     public void requestTeleportTo(UUID recipient) {
-        ServerPlayer to = UEssentials.player(uuid);
-        if (to == null) {
+        ServerPlayer requester = UEssentials.player(uuid);
+        if (requester == null) {
             return;
         }
 
-        requesterEntries.computeIfAbsent(uuid, uuid1 -> new HashSet<>()).add(new TeleportRequest(TeleportRequest.TpDirection.RECEIVER, uuid, recipient));
-        recipientEntries.computeIfAbsent(recipient, uuid1 -> new HashSet<>()).add(new TeleportRequest(TeleportRequest.TpDirection.RECEIVER, uuid, recipient));
+        if (TeleportEvent.REQUESTED.invoker().onRequested(requester, recipient).isFalse()) {
+            return;
+        }
 
-        ServerUser source = ServerUser.get(to.getUUID());
+        TeleportRequest teleportRequest = new TeleportRequest(TeleportRequest.TpDirection.RECEIVER, uuid, recipient);
+        requesterEntries.computeIfAbsent(uuid, uuid1 -> new HashSet<>()).add(teleportRequest);
+        recipientEntries.computeIfAbsent(recipient, uuid1 -> new HashSet<>()).add(teleportRequest);
+
+
+        ServerUser source = ServerUser.get(requester.getUUID());
         ServerUser target = ServerUser.get(recipient);
         Networking.get().sendToClient(new TpRequestedFromPacket(source.uuid()), target.player());
     }
@@ -184,15 +216,21 @@ public class ServerTeleportManager extends BaseTeleportManager {
 
     @Override
     public void requestTeleportFrom(UUID recipient) {
-        ServerPlayer from = UEssentials.server().getPlayerList().getPlayer(uuid);
-        if (from == null) {
+        ServerPlayer requester = UEssentials.server().getPlayerList().getPlayer(uuid);
+        if (requester == null) {
             return;
         }
 
-        requesterEntries.computeIfAbsent(uuid, uuid1 -> new HashSet<>()).add(new TeleportRequest(TeleportRequest.TpDirection.SENDER, uuid, recipient));
-        recipientEntries.computeIfAbsent(recipient, uuid1 -> new HashSet<>()).add(new TeleportRequest(TeleportRequest.TpDirection.SENDER, uuid, recipient));
+        if (TeleportEvent.REQUESTED.invoker().onRequested(requester, recipient).isFalse()) {
+            return;
+        }
 
-        ServerUser source = ServerUser.get(from.getUUID());
+        TeleportRequest teleportRequest = new TeleportRequest(TeleportRequest.TpDirection.SENDER, uuid, recipient);
+        requesterEntries.computeIfAbsent(uuid, uuid1 -> new HashSet<>()).add(teleportRequest);
+        recipientEntries.computeIfAbsent(recipient, uuid1 -> new HashSet<>()).add(teleportRequest);
+
+
+        ServerUser source = ServerUser.get(requester.getUUID());
         ServerUser target = ServerUser.get(recipient);
         Networking.get().sendToClient(new TpRequestedToPacket(source.uuid()), target.player());
     }
@@ -238,5 +276,13 @@ public class ServerTeleportManager extends BaseTeleportManager {
         ServerPlayer dest = UEssentials.player(teleport.destination());
         orig.randomTeleport(dest.getX(), dest.getY(), dest.getZ(), false);
         orig.setLevel(dest.serverLevel());
+    }
+
+    private static class TeleportCountdown {
+        private int current = UEssentialsConfig.TP_DELAY.get();
+
+        public int tick() {
+            return --current;
+        }
     }
 }
