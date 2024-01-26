@@ -404,6 +404,9 @@ public final class ShopLoader {
             addItem(shop, tic("blaze_head"), 225.00f);
         }
 
+        // Read items from Json
+        shop.writeToJson(true);
+
         long end = System.nanoTime();
         long time = end - start;
 

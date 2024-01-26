@@ -1,14 +1,3 @@
-/*
- * Copyright (c) 2022. - Qboi SMP Development Team
- * Do NOT redistribute, or copy in any way, and do NOT modify in any way.
- * It is not allowed to hack into the code, use cheats against the code and/or compiled form.
- * And it is not allowed to decompile, modify or/and patch parts of code or classes or in full form.
- * Sharing this file isn't allowed either, and is hereby strictly forbidden.
- * Sharing decompiled code on social media or an online platform will cause in a report on that account.
- *
- * ONLY the owner can bypass these rules.
- */
-
 package io.github.ultreon.mods.essentials.client.gui.screens.users;
 
 import com.google.common.collect.ImmutableList;
@@ -18,6 +7,8 @@ import com.ultreon.mods.lib.UltreonLibConfig;
 import com.ultreon.mods.lib.client.gui.Theme;
 import com.ultreon.mods.lib.client.gui.Themed;
 import com.ultreon.mods.lib.client.gui.screen.BaseScreen;
+import dev.architectury.platform.Platform;
+import io.github.ultreon.mods.essentials.UEssentials;
 import io.github.ultreon.mods.essentials.user.AbstractClientUser;
 import lombok.Getter;
 import net.fabricmc.api.EnvType;
@@ -58,7 +49,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
     private static final int TEX_W = 64;
     private static final int TEX_H = 64;
 
-    private static final int ENTRY_HEIGHT = 14;
+    private static final int ENTRY_HEIGHT = 28;
     private static final int LIST_BORDER_WIDTH = 7;
     private static final Component SEARCH_HINT = Component.literal("Search...");
     private final int headerHeight;
@@ -140,6 +131,8 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
                 this.y0 = UserListWidget.this.getY() + LIST_BORDER_WIDTH + UserListWidget.this.headerHeight;
                 this.y1 = UserListWidget.this.getY() + LIST_BORDER_WIDTH + UserListWidget.this.height - LIST_BORDER_WIDTH * 2;
+                this.x0 = UserListWidget.this.getX() + LIST_BORDER_WIDTH + 4;
+                this.x1 = UserListWidget.this.getX() + LIST_BORDER_WIDTH + 4 + 220;
 
                 super.render(gfx, mouseX, mouseY, partialTicks);
             }
@@ -388,7 +381,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             this.widget = widget;
             this.guiTexture = widget.guiTexture;
 
-            this.setRenderSelection(false);
+            this.setRenderSelection(true);
             this.setRenderBackground(false);
             this.setRenderTopAndBottom(false);
         }
@@ -413,6 +406,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
             int yi = y0 + 60 - 18; // Idk anymore
             int yj = y1 - y0;
+
             RenderSystem.enableScissor(
                     (int) (this.getRowLeft() * scaleFactor),
                     (int) ((widget.screen.height - yi) * scaleFactor),
@@ -447,10 +441,17 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
             synchronized (entriesLock) {
                 this.clearEntries();
 
+                // Debug Log Users
+                for (AbstractClientUser user : users) {
+                    if (Platform.isDevelopmentEnvironment()) {
+                        UEssentials.LOGGER.info("User: " + user.getName() + " " + user.getSkinLocation().toString());
+                    }
+                }
+
                 synchronized (usersLock) {
                     for (AbstractClientUser user : this.users) {
                         String name = user.getName();
-                        if (name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
+                        if (query.isBlank() || name.toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
                             this.addEntry(new Entry(this.mc, this, user.getName(), null, user::getSkinLocation, user, guiTexture));
                         }
                     }
@@ -494,7 +495,13 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
 
             @SuppressWarnings("UnnecessaryLocalVariable")
             public void render(@NotNull GuiGraphics gfx, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean isMouseOver, float partialTicks) {
-                height = list.itemHeight;
+//                height = list.itemHeight;
+
+//                gfx.drawString(mc.font, "index = " + index + ", top = " + top + ", left = " + left + ", width = " + width + ", height = " + height, left, top + 5, TITLE_COLOR);
+//                gfx.fill(0, 0, 900, 900, 0xffffffff);
+//                gfx.fill(mouseX, mouseY, 50, 50, 0xffffffff);
+
+                left+=4;
 
                 final int i = left + 1;
                 final int j = top + (height - ICON_SIZE) / 2;
@@ -546,7 +553,7 @@ public class UserListWidget extends AbstractWidget implements ContainerEventHand
                 RenderSystem.enableBlend();
                 gfx.blit(guiTexture, i, j, ICON_SIZE, ICON_SIZE, 40.0F, 8.0F, 8, 8, 64, 64);
                 RenderSystem.disableBlend();
-                gfx.drawString(this.mc.font, this.entryTitle, k, (int) ((float) l + 1), list.widget.theme.getTextColor(), false);
+                gfx.drawString(this.mc.font, this.entryTitle, left, (int) ((float) top + 1), list.widget.theme.getTextColor(), false);
 
                 float f = this.ticksTooltip;
 

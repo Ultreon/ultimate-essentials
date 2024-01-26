@@ -1,5 +1,7 @@
 package io.github.ultreon.mods.essentials;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.ultreon.mods.lib.util.ServerLifecycle;
@@ -67,6 +69,7 @@ public class UEssentials {
     public static final String MOD_NAME;
     public static final String MOD_VERSION;
     public static final String MOD_DESCRIPTION;
+    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     @Getter
     private static final boolean clientSide;
@@ -130,6 +133,8 @@ public class UEssentials {
         // Registration
         ModSounds.register();
 
+        UEssentialsConfig.init();
+
         CommandRegistrationEvent.EVENT.register(UEssentials::onCommandRegister);
         LifecycleEvent.SERVER_STARTING.register(this::serverStarting);
         LifecycleEvent.SERVER_STARTED.register(this::serverStarted);
@@ -184,11 +189,14 @@ public class UEssentials {
         if (!getDataFolder().exists() && !getDataFolder().mkdirs())
             throw new RuntimeException("Data folder couldn't be created.");
 
-        if (getDataFolder().exists()) {
-            ServerShop.load();
+        ServerShop serverShop = ServerShop.readFromJson();
+        if (serverShop == null && getDataFolder().exists()) {
+            serverShop = ServerShop.load();
         }
 
-        ShopLoader.load(ServerShop.get());
+        if (serverShop != null) {
+            ShopLoader.load(serverShop);
+        }
 
         dataFile = getDataFile("server.dat");
 

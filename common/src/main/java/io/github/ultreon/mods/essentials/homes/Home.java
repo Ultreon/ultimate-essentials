@@ -1,5 +1,7 @@
 package io.github.ultreon.mods.essentials.homes;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.ultreon.mods.essentials.Constants;
 import io.github.ultreon.mods.essentials.util.BaseLocation;
 import io.github.ultreon.mods.essentials.util.Savable;
@@ -24,6 +26,16 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Objects;
 
 public class Home implements Sendable, Savable, BaseLocation {
+    public static final Codec<Home> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+        Codec.STRING.fieldOf("name").forGetter(Home::getName),
+        Codec.DOUBLE.fieldOf("x").forGetter(Home::getX),
+        Codec.DOUBLE.fieldOf("y").forGetter(Home::getY),
+        Codec.DOUBLE.fieldOf("z").forGetter(Home::getZ),
+        Codec.FLOAT.fieldOf("yaw").forGetter(Home::getXRot),
+        Codec.FLOAT.fieldOf("pitch").forGetter(Home::getYRot),
+        ResourceKey.codec(Registries.DIMENSION).fieldOf("world").forGetter(Home::getLevelKey)
+    ).apply(instance, Home::new));
+
     @NotNull
     private String name;
     @Getter
@@ -46,16 +58,18 @@ public class Home implements Sendable, Savable, BaseLocation {
         this(name, new Vec3(x, y, z), new Vec2(xRot, yRot), level);
     }
 
+    public Home(String name, Vec3 position, float xRot, float yRot, ResourceKey<Level> level) {
+        this(name, position.x, position.y, position.z, xRot, yRot, level);
+    }
+
     public static Home load(CompoundTag tag) {
-        ResourceLocation levelLoc = new ResourceLocation(tag.getString("world"));
-        ResourceKey<Level> level = ResourceKey.create(Registries.DIMENSION, levelLoc);
         String name = tag.getString("name");
         double x = tag.getDouble("x");
         double y = tag.getDouble("y");
         double z = tag.getDouble("z");
         float xRot = tag.getFloat("yaw");
         float yRot = tag.getFloat("pitch");
-
+        ResourceKey<Level> level = ResourceKey.create(Registries.DIMENSION, new ResourceLocation(tag.getString("world")));
         return new Home(name, x, y, z, xRot, yRot, level);
     }
 

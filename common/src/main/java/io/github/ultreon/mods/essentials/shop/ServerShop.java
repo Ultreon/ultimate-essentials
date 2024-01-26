@@ -1,5 +1,9 @@
 package io.github.ultreon.mods.essentials.shop;
 
+import com.google.gson.JsonObject;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.ultreon.mods.essentials.UEssentials;
 import io.github.ultreon.mods.essentials.user.ServerUser;
 import io.github.ultreon.mods.essentials.util.PagedList;
@@ -8,19 +12,33 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
+import net.minecraft.util.GsonHelper;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
 
 public class ServerShop extends Shop {
+    public static final Codec<ServerShop> CODEC = RecordCodecBuilder.create((instance) -> instance.group(
+        Codec.list(ShopItem.CODEC).fieldOf("items").forGetter(ServerShop::getItems)
+    ).apply(instance, ServerShop::new));
+
     private static final List<Consumer<ServerShop>> loaders = new ArrayList<>();
 
     private final PagedList<ShopItem> items = new PagedList<>(ShopPage.PAGE_SIZE);
     private final Map<UUID, ShopItem> itemMap = new HashMap<>();
 
     private static ServerShop instance;
+
+    private ServerShop(List<ShopItem> shopItems) {
+        items.addAll(shopItems);
+        for (ShopItem item : shopItems) {
+            itemMap.put(item.getUUID(), item);
+        }
+    }
 
     public static ServerShop get() {
         return instance;
@@ -64,7 +82,7 @@ public class ServerShop extends Shop {
 
     }
 
-    public static Shop load() {
+    public static ServerShop load() {
         if (instance != null) {
             throw new IllegalStateException("Shop already loaded.");
         }
@@ -106,5 +124,35 @@ public class ServerShop extends Shop {
 
     public int buy(ServerUser user, UUID uuid) {
         return user.buy(uuid);
+    }
+
+    public static ServerShop readFromJson() {
+        File dataFile = UEssentials.getDataFile("shop.json");
+        if (dataFile.exists()) {
+            try (FileReader reader = new FileReader(dataFile)) {
+                ServerShop serverShop = CODEC.parse(JsonOps.INSTANCE, GsonHelper.fromJson(UEssentials.GSON, reader, JsonObject.class)).resultOrPartial(UEssentials.LOGGER::error).orElseThrow();
+                instance = serverShop;
+                return serverShop;
+            } catch (IOException e) {
+                UEssentials.LOGGER.error("Failed to read shop data from file.", e);
+            }
+        }
+
+        return null;
+    }
+
+    public void writeToJson(boolean ignoreIfExists) {
+        File dataFile = UEssentials.getDataFile("shop.json");
+        if (ignoreIfExists && dataFile.exists()) {
+            return;
+        }
+
+        CODEC.encodeStart(JsonOps.INSTANCE, this).resultOrPartial(UEssentials.LOGGER::error).ifPresent((json) -> {
+            try (FileWriter writer = new FileWriter(dataFile)) {
+                UEssentials.GSON.toJson(json, writer);
+            } catch (IOException e) {
+                UEssentials.LOGGER.error("Failed to write shop data to file.", e);
+            }
+        });
     }
 }

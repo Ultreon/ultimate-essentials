@@ -1,5 +1,6 @@
 package io.github.ultreon.mods.essentials.user;
 
+import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.chars.CharArrayList;
 import it.unimi.dsi.fastutil.chars.CharList;
 import org.jetbrains.annotations.NotNull;
@@ -11,6 +12,7 @@ import java.util.Objects;
  */
 public record Permission(@NotNull String id, boolean def) {
     public static final int LENGTH_LIMIT = 64;
+    public static final Codec<Permission> CODEC = Codec.STRING.xmap(Permission::new, Permission::id);
 
     public Permission(@NotNull String id, boolean def) {
         if (id.length() > 64) {

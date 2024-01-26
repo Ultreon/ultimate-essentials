@@ -8,7 +8,6 @@ public class UEssentialsConfig {
     public static final net.minecraftforge.fml.config.IConfigSpec<?> CLIENT_SPEC;
 
     public static final ForgeConfigSpec.IntValue TP_DELAY;
-
     public static final ForgeConfigSpec.BooleanValue UI_SHOW_OVERLAY;
 
     static {

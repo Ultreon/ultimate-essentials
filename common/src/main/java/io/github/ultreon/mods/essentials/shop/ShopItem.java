@@ -1,5 +1,10 @@
 package io.github.ultreon.mods.essentials.shop;
 
+import com.google.gson.JsonElement;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.nbt.CompoundTag;
@@ -13,6 +18,11 @@ import java.util.Set;
 import java.util.UUID;
 
 public class ShopItem {
+    public static final Codec<ShopItem> CODEC = RecordCodecBuilder.create((instance) -> instance.group(
+            ItemStack.CODEC.fieldOf("item").forGetter(ShopItem::getItem),
+            Codec.DOUBLE.fieldOf("price").forGetter(ShopItem::getPrice)
+    ).apply(instance, ShopItem::new));
+
     private ItemStack item;
     @Getter
     @Setter
@@ -60,6 +70,14 @@ public class ShopItem {
         double price = buffer.readDouble();
 
         return new ShopItem(uuid, stack, price);
+    }
+
+    public static DataResult<JsonElement> encode(ShopItem item, JsonElement prefix) {
+        return CODEC.encode(item, JsonOps.INSTANCE, prefix);
+    }
+
+    public static DataResult<ShopItem> decode(JsonElement element) {
+        return CODEC.parse(JsonOps.INSTANCE, element);
     }
 
     public void write(FriendlyByteBuf buffer) {
